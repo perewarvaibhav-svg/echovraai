@@ -120,9 +120,9 @@ app.post('/api/analyze-voice', upload.single('audio'), async (req, res) => {
         const wavBuffer = fs.readFileSync(wavPath);
         console.log(`[CONVERT] WAV file ready: ${wavBuffer.length} bytes`);
 
-        // ── Step 2: Whisper Transcription (via Groq LPUs) ──
-        console.log('[GROQ] Transcribing with Whisper...');
-        const transcription = await getGroq().audio.transcriptions.create({
+        // ── Step 2: Auto-Detect Language & Translate to English (via Groq Whisper) ──
+        console.log('[GROQ] Transcribing and Translating to English...');
+        const transcription = await getGroq().audio.translations.create({
             file: fs.createReadStream(wavPath),
             model: 'whisper-large-v3-turbo',
         });
@@ -141,9 +141,9 @@ app.post('/api/analyze-voice', upload.single('audio'), async (req, res) => {
             messages: [
                 {
                     role: "system",
-                    content: "You are an expert psychological logic gate mapping transcripts to emotions. Output strictly valid JSON with exact keys: 'emotion' (Single word: Happy, Sad, Angry, Fearful, Disgust, Surprised, or Neutral), 'confidence' (Number between 0.85 and 0.99), and 'tensor' (Array of exactly 4 objects containing 'label' and 'score')."
+                    content: "You are an expert psychological logic gate mapping transcripts to emotions. The input is an English translation of a spoken audio (which could have been in any global language). Output strictly valid JSON with exact keys: 'emotion' (Single word: Happy, Sad, Angry, Fearful, Disgust, Surprised, or Neutral), 'confidence' (Number between 0.85 and 0.99), and 'tensor' (Array of exactly 4 objects containing 'label' and 'score')."
                 },
-                { role: "user", content: `Read this and classify the exact emotional state: "${transcript}"` }
+                { role: "user", content: `Read this translated text and classify the exact emotional state of the speaker: "${transcript}"` }
             ]
         });
 
