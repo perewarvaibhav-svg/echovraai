@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Emotion Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0f1115; color: #f8fafc; min-height: 100vh; padding: 40px; display: flex; justify-content: center; align-items: flex-start; }
+        
+        .layout { display: grid; grid-template-columns: 1fr 380px; gap: 40px; width: 100%; max-width: 1000px; margin: 0 auto; }
+        @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+        
+        .panel { background: #1a1e26; border: 1px solid #2e3645; border-radius: 16px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* Clean Typography */
+        h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #fff; }
+        p.subtitle { color: #94a3b8; font-size: 13px; margin-bottom: 30px; }
+        h2 { font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-bottom: 16px; }
+
+        /* Smoother Record Button */
+        .record-group { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px 0; }
+        .record-btn {
+            width: 100px; height: 100px;
+            border-radius: 50%; border: none;
+            background: #2563eb; color: white;
+            cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+        }
+        .record-btn:hover { background: #3b82f6; transform: scale(1.03); }
+        .record-btn.recording {
+            background: #ef4444; box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+            /* Clean CSS scaling instead of harsh box-shadow pulsing */
+            animation: pulse-smooth 1.5s infinite ease-in-out alternate;
+        }
+        .record-btn svg { width: 32px; height: 32px; margin-bottom: 4px; }
+        .record-btn span { font-size: 11px; font-weight: 600; }
+        @keyframes pulse-smooth { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+        /* UI Elements */
+        .divider { text-align: center; color: #475569; font-size: 11px; margin: 24px 0; letter-spacing: 2px; }
+        input[type="file"] { width: 100%; padding: 12px; background: #0f1115; border: 1px dashed #334155; border-radius: 8px; color: #94a3b8; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        input[type="file"]:hover { border-color: #475569; }
+
+        /* Results & Loaders */
+        #loading { display: none; text-align: center; padding: 20px 0; color: #94a3b8; font-size: 14px; }
+        #results { display: none; margin-top: 20px; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .metric-box { display: flex; justify-content: space-between; align-items: baseline; background: #0f1115; padding: 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #2e3645; }
+        .emotion-val { font-size: 32px; font-weight: 700; color: #fff; }
+        .conf-val { font-family: monospace; font-size: 16px; color: #10b981; background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 6px; }
+        .transcript-val { font-style: italic; color: #cbd5e1; font-size: 14px; background: #0f1115; padding: 16px; border-radius: 12px; border: 1px solid #2e3645; line-height: 1.5; }
+
+        /* History Table */
+        .history-list { display: flex; flex-direction: column; gap: 12px; }
+        .history-item { background: #0f1115; border: 1px solid #2e3645; padding: 16px; border-radius: 10px; font-size: 13px; color: #94a3b8; }
+        .history-item strong { color: #f8fafc; font-size: 14px; display: block; margin-bottom: 4px; text-transform: capitalize; }
+        .history-item .stamp { font-size: 11px; color: #475569; margin-top: 8px; }
+        #refreshHistory { width: 100%; border: 1px solid #334155; background: #0f1115; color: #94a3b8; padding: 8px; border-radius: 6px; cursor: pointer; margin-bottom: 16px; transition: 0.2s;}
+        #refreshHistory:hover { background: #2e3645; color: white;}
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <!-- Main Analysis Panel -->
+        <div class="panel">
+            <h1>Voice Emotion Engine</h1>
+            <p class="subtitle">Wav2Vec2 Acoustic Model + Semantic Analysis</p>
+
+            <div class="record-group">
+                <button id="recordBtn" class="record-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                    </svg>
+                    <span id="recordText">RECORD</span>
+                </button>
+            </div>
+
+            <div class="divider">── OR ──</div>
+            <input type="file" id="audioUpload" accept="audio/*">
+
+            <div id="loading">Analyzing vocal metrics...</div>
+
+            <div id="results">
+                <div class="metric-box">
+                    <div>
+                        <div style="font-size: 11px; color: #64748b; margin-bottom: 4px; text-transform: uppercase;">Emotion</div>
+                        <div id="emotionResult" class="emotion-val">Neutral</div>
+                    </div>
+                    <div id="confidenceResult" class="conf-val">90.0%</div>
+                </div>
+                
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 6px; text-transform: uppercase;">Transcript</div>
+                <div id="transcriptResult" class="transcript-val">"..."</div>
+            </div>
+        </div>
+
+        <!-- Supabase Cloud DB History Panel -->
+        <div class="panel">
+            <h2>☁️ Database History</h2>
+            <button id="refreshHistory">⟳ Logs</button>
+            <div id="historyList" class="history-list">
+                <div class="history-item" style="text-align: center; border: none;">Connect .env keys to enable auto-logging.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const recordBtn = document.getElementById('recordBtn');
+        const recordText = document.getElementById('recordText');
+        const audioUpload = document.getElementById('audioUpload');
+        
+        // Microphone Control
+        recordBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = async () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                        await processAudio(blob, 'mic_recording.webm');
+                        fetchHistory(); // Auto-update cloud logs
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    recordBtn.classList.add('recording');
+                    recordText.textContent = 'STOP';
+                } catch (err) { alert('Microphone access denied.'); }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.classList.remove('recording');
+                recordText.textContent = 'RECORD';
+            }
+        });
+
+        // File Upload Control
+        audioUpload.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) {
+                await processAudio(e.target.files[0], e.target.files[0].name);
+                fetchHistory(); // Auto-update cloud logs
+            }
+        });
+
+        // Backend Processing
+        async function processAudio(file, filename) {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('audio', file, filename);
+
+            try {
+                const res = await fetch('/api/analyze-voice', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('emotionResult').innerText = data.emotion;
+                document.getElementById('confidenceResult').innerText = data.confidence;
+                document.getElementById('transcriptResult').innerText = `"${data.transcript}"`;
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').style.display = 'block';
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Analysis Error: ' + err.message);
+            }
+        }
+
+        // Supabase History Fetcher
+        async function fetchHistory() {
+            try {
+                const res = await fetch('/api/history');
+                const data = await res.json();
+                const container = document.getElementById('historyList');
+                
+                if (data.length === 0) return; // Keep placeholder if empty/no DB
+                
+                container.innerHTML = '';
+                data.forEach(item => {
+                    const date = new Date(item.created_at).toLocaleTimeString();
+                    container.innerHTML += `
+                        <div class="history-item">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong>${item.emotion}</strong>
+                                <span style="color: #10b981; font-family: monospace;">${item.confidence}%</span>
+                            </div>
+                            <span style="font-style: italic">"${item.transcript}"</span>
+                            <div class="stamp">Logged to PostgreSQL at ${date}</div>
+                        </div>
+                    `;
+                });
+            } catch (e) { console.error('History fetch failed', e); }
+        }
+
+        document.getElementById('refreshHistory').addEventListener('click', fetchHistory);
+        fetchHistory(); // Fetch on load
+    </script>
+</body>
+</html>

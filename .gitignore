@@ -1,0 +1,23 @@
+# Node.js
+node_modules/
+.env
+
+# Temporary Audio Chunks
+temp_*.webm
+*.wav
+uploads/
+
+# Python / Deep Learning
+__pycache__/
+*.pt
+*.pth
+*.safetensors
+*.bin
+
+# Massive Datasets (DO NOT PUSH TO GITHUB)
+archive/
+datasets/
+ml_training_engine/archive/
+
+# MacOS
+.DS_Store
