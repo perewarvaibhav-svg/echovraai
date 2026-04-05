@@ -214,6 +214,15 @@ function cleanup(...paths) {
     }
 }
 
+// Root endpoint to prevent 404 errors when visiting the backend directly
+app.get('/', (req, res) => {
+    res.json({
+        service: "Echovra AI Data Engine",
+        status: "Active",
+        endpoints: ["/api/analyze-voice", "/api/history", "/api/health"]
+    });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ status: 'online', engine: 'Wav2Vec2 + Whisper (Groq)' });
