@@ -143,14 +143,22 @@ const SonicWaveformHero = () => {
 
                 <motion.div
                     custom={3} variants={fadeUpVariants} initial="hidden" animate="visible"
-                    className="flex flex-col items-center max-w-lg mx-auto w-full relative z-30"
+                    className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-lg mx-auto w-full relative z-30"
                 >
                     <button 
                         onClick={() => router.push('/record')}
-                        className="px-8 py-4 bg-white text-black font-semibold rounded-lg shadow-lg hover:bg-gray-200 transition-colors duration-300 flex items-center justify-center gap-2 w-full max-w-sm"
+                        className="px-8 py-4 bg-white text-black font-semibold rounded-lg shadow-lg hover:bg-gray-200 transition-colors duration-300 flex items-center justify-center gap-2 w-full sm:w-auto"
                     >
                         Analyze the Stream
                         <ArrowRight className="h-5 w-5" />
+                    </button>
+                    
+                    <button 
+                        onClick={() => router.push('/history')}
+                        className="px-8 py-4 bg-transparent border border-white/20 text-white font-semibold rounded-lg hover:bg-white/10 transition-colors duration-300 flex items-center justify-center gap-2 w-full sm:w-auto"
+                    >
+                        <BarChart2 className="h-5 w-5" />
+                        Cloud Dashboard
                     </button>
                 </motion.div>
             </div>

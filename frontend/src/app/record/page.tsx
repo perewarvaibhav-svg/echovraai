@@ -94,6 +94,7 @@ export default function RecordPage() {
     const [audioIntensity, setAudioIntensity] = useState(0);
     const [analysisResult, setAnalysisResult] = useState<{emotion: string, confidence: string, transcript: string} | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [processingTime, setProcessingTime] = useState(0);
     
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<BlobPart[]>([]);
@@ -182,8 +183,22 @@ export default function RecordPage() {
             alert('Analysis Error: ' + err.message);
         } finally {
             setIsProcessing(false);
+            setProcessingTime(0);
         }
     };
+
+    // Cold Boot Tracker
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isProcessing) {
+            interval = setInterval(() => {
+                setProcessingTime(prev => prev + 1);
+            }, 1000);
+        } else {
+            setProcessingTime(0);
+        }
+        return () => clearInterval(interval);
+    }, [isProcessing]);
 
     useEffect(() => {
         return () => {
@@ -255,7 +270,9 @@ export default function RecordPage() {
 
                 <div className="mt-16 h-8 flex items-center justify-center text-slate-300 drop-shadow-md">
                     {isProcessing ? (
-                        <span className="animate-pulse tracking-[0.2em] uppercase text-sm">Echovra AI analyzing...</span>
+                        <span className="animate-pulse tracking-[0.2em] uppercase text-sm text-teal-400">
+                            {processingTime > 2 ? "Waking up Echovra AI Engine arrays..." : "Echovra AI analyzing..."}
+                        </span>
                     ) : isRecording ? (
                         <span className="text-red-400 uppercase tracking-widest text-sm animate-pulse font-medium">Recording</span>
                     ) : (
