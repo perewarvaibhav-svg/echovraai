@@ -198,7 +198,7 @@ export default function RecordPage() {
         formData.append('audio', file, filename);
 
         try {
-            const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://whatsapp-bot-production-8239.up.railway.app';
+            const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://echovraai-production.up.railway.app';
             const res = await fetch(`${BACKEND}/api/analyze-voice`, { method: 'POST', body: formData });
             const data = await res.json();
             

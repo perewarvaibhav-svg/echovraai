@@ -13,7 +13,7 @@ export default function HistoryDashboard() {
     useEffect(() => {
         const fetchHistory = async () => {
             try {
-                const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://whatsapp-bot-production-8239.up.railway.app';
+                const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://echovraai-production.up.railway.app';
                 const res = await fetch(`${BACKEND}/api/history`);
                 const data = await res.json();
                 setHistory(data);
