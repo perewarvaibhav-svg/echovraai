@@ -29,11 +29,18 @@ if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 // static is now handled by Next.js component UI
 
-// Groq SDK (OpenAI-compatible) for Whisper transcription
-const groq = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1",
-});
+// Groq SDK (OpenAI-compatible) - initialised lazily to avoid crash on missing env vars
+let _groq = null;
+function getGroq() {
+    if (!_groq) {
+        if (!process.env.GROQ_API_KEY) throw new Error('GROQ_API_KEY is not set in environment variables');
+        _groq = new OpenAI({
+            apiKey: process.env.GROQ_API_KEY,
+            baseURL: "https://api.groq.com/openai/v1",
+        });
+    }
+    return _groq;
+}
 
 // HuggingFace Wav2Vec2 Speech Emotion Recognition model
 const HF_MODEL_URL = "https://api-inference.huggingface.co/models/ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition";
@@ -115,7 +122,7 @@ app.post('/api/analyze-voice', upload.single('audio'), async (req, res) => {
 
         // ── Step 2: Whisper Transcription (via Groq LPUs) ──
         console.log('[GROQ] Transcribing with Whisper...');
-        const transcription = await groq.audio.transcriptions.create({
+        const transcription = await getGroq().audio.transcriptions.create({
             file: fs.createReadStream(wavPath),
             model: 'whisper-large-v3-turbo',
         });
@@ -128,7 +135,7 @@ app.post('/api/analyze-voice', upload.single('audio'), async (req, res) => {
         let rawConfidence = "0";
         let allScores = [];
 
-        const completion = await groq.chat.completions.create({
+        const completion = await getGroq().chat.completions.create({
             model: "llama-3.3-70b-versatile",
             response_format: { type: "json_object" },
             messages: [
