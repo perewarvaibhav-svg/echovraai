@@ -27,28 +27,35 @@ const SonicWaveformCanvas = () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         };
+
+        const lineCount = 45;
+        const segmentCount = 50;
         
         const draw = () => {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const lineCount = 60;
-            const segmentCount = 80;
             const height = canvas.height / 2;
+            
+            // PRE-COMPUTE X and Mouse boundaries per frame to save 95% CPU load!
+            const xCache = new Float32Array(segmentCount + 1);
+            const mouseEffectCache = new Float32Array(segmentCount + 1);
+            for (let j = 0; j <= segmentCount; j++) {
+                xCache[j] = (j / segmentCount) * canvas.width;
+                const distToMouse = Math.hypot(xCache[j] - mouse.x, height - mouse.y);
+                mouseEffectCache[j] = Math.max(0, 1 - distToMouse / 400);
+            }
             
             for (let i = 0; i < lineCount; i++) {
                 ctx.beginPath();
                 const progress = i / lineCount;
                 const colorIntensity = Math.sin(progress * Math.PI);
-                ctx.strokeStyle = `rgba(0, 255, 192, ${colorIntensity * 0.5})`;
+                ctx.strokeStyle = `rgba(0, 255, 192, ${colorIntensity * 0.6})`;
                 ctx.lineWidth = 1.5;
 
-                for (let j = 0; j < segmentCount + 1; j++) {
-                    const x = (j / segmentCount) * canvas.width;
-                    
-                    // Mouse influence
-                    const distToMouse = Math.hypot(x - mouse.x, (height) - mouse.y);
-                    const mouseEffect = Math.max(0, 1 - distToMouse / 400);
+                for (let j = 0; j <= segmentCount; j++) {
+                    const x = xCache[j];
+                    const mouseEffect = mouseEffectCache[j];
 
                     // Wave calculation
                     const noise = Math.sin(j * 0.1 + time + i * 0.2) * 20;

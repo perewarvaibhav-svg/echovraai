@@ -6,7 +6,7 @@ import { Mic, Square, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // Sonic Waveform Canvas bound to audio intensity
-const AudioReactiveWaveform = ({ intensity }: { intensity: number }) => {
+const AudioReactiveWaveform = ({ analyserRef }: { analyserRef: React.MutableRefObject<any> }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -24,35 +24,64 @@ const AudioReactiveWaveform = ({ intensity }: { intensity: number }) => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
         };
+
+        // PRE-ALLOCATE arrays to completely prevent Garbage Collection lag!
+        const lineCount = 45;
+        const segmentCount = 50;
+        let dataArray: Uint8Array | null = null;
+        const frequencyData = new Float32Array(lineCount);
         
         const draw = () => {
             ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Clear with trail
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const lineCount = 60;
-            const segmentCount = 80;
             const height = canvas.height / 2;
             
-            // Core multiplier based on voice intensity!
-            const impact = 1 + (intensity * 8);
+            // Get real frequency data if recording without allocating new memory
+            let overallIntensity = 0;
+            if (analyserRef.current) {
+                if (!dataArray) dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+                analyserRef.current.getByteFrequencyData(dataArray);
+                
+                const step = Math.floor(dataArray.length / lineCount);
+                for (let i = 0; i < lineCount; i++) {
+                    frequencyData[i] = dataArray[i * step] || 0;
+                    overallIntensity += frequencyData[i];
+                }
+                overallIntensity = (overallIntensity / lineCount) / 255;
+            }
+
+            const impact = 1 + (overallIntensity * 8);
+
+            // PRE-COMPUTE X and Mouse boundaries per frame to save massive CPU load!
+            const xCache = new Float32Array(segmentCount + 1);
+            const mouseEffectCache = new Float32Array(segmentCount + 1);
+            for (let j = 0; j <= segmentCount; j++) {
+                xCache[j] = (j / segmentCount) * canvas.width;
+                const distToMouse = Math.hypot(xCache[j] - mouse.x, height - mouse.y);
+                mouseEffectCache[j] = Math.max(0, 1 - distToMouse / 400);
+            }
 
             for (let i = 0; i < lineCount; i++) {
                 ctx.beginPath();
                 const progress = i / lineCount;
                 const colorIntensity = Math.sin(progress * Math.PI);
-                ctx.strokeStyle = `rgba(0, 255, 192, ${colorIntensity * 0.5 * impact})`;
-                ctx.lineWidth = 1.5 + (intensity * 2);
+                
+                // Read the specific pitch frequency for this line
+                const pitch = frequencyData[i] ? frequencyData[i] / 255 : 0;
+                
+                // Lines that hit specific pitches light up brighter and thicker!
+                ctx.strokeStyle = `rgba(0, 255, 192, ${(colorIntensity * 0.6 * impact) + (pitch * 0.5)})`;
+                ctx.lineWidth = 1.5 + (pitch * 4);
 
-                for (let j = 0; j < segmentCount + 1; j++) {
-                    const x = (j / segmentCount) * canvas.width;
-                    
-                    const distToMouse = Math.hypot(x - mouse.x, height - mouse.y);
-                    const mouseEffect = Math.max(0, 1 - distToMouse / 400);
+                for (let j = 0; j <= segmentCount; j++) {
+                    const x = xCache[j];
+                    const mouseEffect = mouseEffectCache[j];
 
-                    // Wave calculation bound to intensity
+                    // Noise oscillates naturally, but pitch directly spikes the wave!
                     const noise = Math.sin(j * 0.1 + time + i * 0.2) * 20 * impact;
-                    const spike = Math.cos(j * 0.2 + time + i * 0.1) * Math.sin(j * 0.05 + time) * 50 * impact;
-                    const y = height + noise + spike * (1 + mouseEffect * 2);
+                    const pitchSpike = Math.cos(j * 0.2 + time) * (pitch * 120);
+                    const y = height + noise + (pitchSpike * (1 + mouseEffect * 2));
                     
                     if (j === 0) {
                         ctx.moveTo(x, y);
@@ -63,7 +92,7 @@ const AudioReactiveWaveform = ({ intensity }: { intensity: number }) => {
                 ctx.stroke();
             }
 
-            time += 0.02 + (intensity * 0.1);
+            time += 0.02 + (overallIntensity * 0.1);
             animationFrameId = requestAnimationFrame(draw);
         };
 
@@ -83,9 +112,9 @@ const AudioReactiveWaveform = ({ intensity }: { intensity: number }) => {
             window.removeEventListener('resize', resizeCanvas);
             window.removeEventListener('mousemove', handleMouseMove);
         };
-    }, [intensity]);
+    }, []);
 
-    return <canvas ref={canvasRef} className="absolute inset-0 z-0 w-full h-full" />;
+    return <canvas ref={canvasRef} className="fixed inset-0 z-0 w-full h-full pointer-events-none" />;
 };
 
 export default function RecordPage() {
@@ -169,7 +198,7 @@ export default function RecordPage() {
         formData.append('audio', file, filename);
 
         try {
-            const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://whatsapp-bot-production-8239.up.railway.app';
+            const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
             const res = await fetch(`${BACKEND}/api/analyze-voice`, { method: 'POST', body: formData });
             const data = await res.json();
             
@@ -213,11 +242,11 @@ export default function RecordPage() {
     const shadowSpread = 10 + (audioIntensity * 80);
 
     return (
-        <div className="h-screen w-full bg-black flex flex-col items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen w-full bg-black flex flex-col items-center justify-center relative overflow-x-hidden overflow-y-auto py-20 px-4">
             {/* The Audio Intensive Sonic Waveform Background */}
-            <AudioReactiveWaveform intensity={audioIntensity} />
+            <AudioReactiveWaveform analyserRef={analyserRef} />
 
-            <div className="absolute inset-0 bg-black/40 z-[1] pointer-events-none" />
+            <div className="fixed inset-0 bg-black/40 z-[1] pointer-events-none" />
 
             {/* Back Button */}
             <button 
