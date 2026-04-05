@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const next = require('next');
 const multer = require('multer');
 const { OpenAI } = require('openai');
 const fs = require('fs');
@@ -213,19 +212,9 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'online', engine: 'Wav2Vec2 + Whisper (Groq)' });
 });
 
-const dev = process.env.NODE_ENV !== 'production';
-const nextApp = next({ dev, dir: path.join(__dirname, 'frontend') });
-const handle = nextApp.getRequestHandler();
-
-nextApp.prepare().then(() => {
-    app.use((req, res) => {
-        return handle(req, res);
-    });
-
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-        console.log(`\n🚀 Echovra AI engine running natively on single port HTTP server @ http://localhost:${PORT}`);
-        console.log(`   Groq API Key: ${process.env.GROQ_API_KEY ? '✅ loaded' : '❌ MISSING'}`);
-        console.log(`   HuggingFace Key: ${process.env.HUGGINGFACE_API_KEY ? '✅ loaded' : '❌ MISSING'}\n`);
-    });
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`\n🚀 Echovra AI engine running @ http://localhost:${PORT}`);
+    console.log(`   Groq API Key: ${process.env.GROQ_API_KEY ? '✅ loaded' : '❌ MISSING'}`);
+    console.log(`   HuggingFace Key: ${process.env.HUGGINGFACE_API_KEY ? '✅ loaded' : '❌ MISSING'}\n`);
 });
