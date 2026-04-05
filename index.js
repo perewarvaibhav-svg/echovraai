@@ -124,7 +124,7 @@ app.post('/api/analyze-voice', upload.single('audio'), async (req, res) => {
         console.log('[GROQ] Transcribing and Translating to English...');
         const transcription = await getGroq().audio.translations.create({
             file: fs.createReadStream(wavPath),
-            model: 'whisper-large-v3-turbo',
+            model: 'whisper-large-v3',
         });
         const transcript = transcription.text;
         console.log(`[GROQ] Transcript: "${transcript}"`);
